@@ -1,1 +1,1 @@
-# Challenge-2---Fraud-Detection
+# Challenge-2: Fraud-Detection
