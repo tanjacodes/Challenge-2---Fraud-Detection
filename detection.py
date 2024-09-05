@@ -1,40 +1,37 @@
 import pandas as pd
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import IsolationForest
-from sklearn.model_selection import train_test_split
 
-# Load the data
-file_path = 'your_data.csv'  # Replace with the actual file path
-data = pd.read_csv(file_path)
+# Load your data (replace 'data.csv' with the actual file path)
+data = pd.read_csv('Dataframe_RiskOn_joined.csv')
+data = data.drop(columns=['Client ID', 'RM ID', 'Date'])
 
-# Preprocess data
-# Convert 'Date' to datetime and extract useful features
-data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
-data['Year'] = data['Date'].dt.year
-data['Month'] = data['Date'].dt.month
-data['Day'] = data['Date'].dt.day
+# Handle missing or incorrect data
+# One-hot encode categorical variables (Sex_Client, Country_Client, etc.)
+data = pd.get_dummies(data, drop_first=True)
 
-# Encode categorical features
-le_country = LabelEncoder()
-le_sex = LabelEncoder()
-data['Country_Client'] = le_country.fit_transform(data['Country_Client'])
-data['Sex_Client'] = le_sex.fit_transform(data['Sex_Client'])
-data['Sex_RM'] = le_sex.fit_transform(data['Sex_RM'])
-data['Nationality_RM'] = le_country.fit_transform(data['Nationality_RM'])
-
-# Drop irrelevant columns for anomaly detection
-features = data.drop(['Client ID', 'RM ID', 'Date'], axis=1)
-
-# Scale numerical features
+# Feature scaling (standardizing)
 scaler = StandardScaler()
-features_scaled = scaler.fit_transform(features)
+X_scaled = scaler.fit_transform(data)
 
-# Train Isolation Forest model
+# Apply Isolation Forest for anomaly detection
 model = IsolationForest(contamination=0.05, random_state=42)
-model.fit(features_scaled)
+data['Anomaly'] = model.fit_predict(X_scaled)
 
-# Predict anomalies
-data['Anomaly'] = model.predict(features_scaled)
+# Map results (1 for normal, -1 for anomaly)
+data['Anomaly'] = data['Anomaly'].map({1: 'Normal', -1: 'Fraud'})
 
-# -1 for anomalies, 1 for normal points
-data['Anomaly'] = data['Anomaly'].map({-1: 'Anomaly', 1: 'Normal'})
+# Filter anomalies (transactions flagged as 'Fraud')
+anomalies = data[data['Anomaly'] == 'Fraud']
+
+# Calculate the percentage of fraud
+total_rows = len(data)
+fraud_count = len(anomalies)
+fraud_percentage = (fraud_count / total_rows) * 100
+
+print(f"Total Transactions: {total_rows}")
+print(f"Fraudulent Transactions: {fraud_count}")
+print(f"Percentage of Fraudulent Transactions: {fraud_percentage:.2f}%")
+
+# Optional: Save anomalies to a CSV file
+anomalies.to_csv('fraud_detection_anomalies.csv', index=False)
