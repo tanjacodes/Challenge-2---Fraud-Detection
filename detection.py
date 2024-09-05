@@ -1,41 +1,40 @@
-import numpy as np
 import pandas as pd
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler
-import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
-# Generate synthetic data
-np.random.seed(42)
-normal_data = np.random.normal(loc=0, scale=1, size=(1000, 2))  # Normal transactions
-fraud_data = np.random.normal(loc=5, scale=1, size=(50, 2))   # Fraudulent transactions
-data = np.vstack([normal_data, fraud_data])
-labels = np.array([1]*1000 + [-1]*50)  # 1 for normal, -1 for fraud
+# Load the data
+file_path = 'your_data.csv'  # Replace with the actual file path
+data = pd.read_csv(file_path)
 
-# Create a DataFrame
-df = pd.DataFrame(data, columns=['Feature1', 'Feature2'])
-df['Label'] = labels
+# Preprocess data
+# Convert 'Date' to datetime and extract useful features
+data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
+data['Year'] = data['Date'].dt.year
+data['Month'] = data['Date'].dt.month
+data['Day'] = data['Date'].dt.day
 
-# Preprocessing
+# Encode categorical features
+le_country = LabelEncoder()
+le_sex = LabelEncoder()
+data['Country_Client'] = le_country.fit_transform(data['Country_Client'])
+data['Sex_Client'] = le_sex.fit_transform(data['Sex_Client'])
+data['Sex_RM'] = le_sex.fit_transform(data['Sex_RM'])
+data['Nationality_RM'] = le_country.fit_transform(data['Nationality_RM'])
+
+# Drop irrelevant columns for anomaly detection
+features = data.drop(['Client ID', 'RM ID', 'Date'], axis=1)
+
+# Scale numerical features
 scaler = StandardScaler()
-X = scaler.fit_transform(df[['Feature1', 'Feature2']])
+features_scaled = scaler.fit_transform(features)
 
 # Train Isolation Forest model
 model = IsolationForest(contamination=0.05, random_state=42)
-model.fit(X)
+model.fit(features_scaled)
 
 # Predict anomalies
-df['Predicted'] = model.predict(X)
-df['Predicted'] = df['Predicted'].map({1: 'Normal', -1: 'Fraud'})
+data['Anomaly'] = model.predict(features_scaled)
 
-# Plotting results
-plt.figure(figsize=(10, 6))
-plt.scatter(df['Feature1'], df['Feature2'], c=df['Predicted'].apply(lambda x: 1 if x == 'Fraud' else 0), cmap='coolwarm', label='Anomaly')
-plt.title('Fraud Detection using Isolation Forest')
-plt.xlabel('Feature1')
-plt.ylabel('Feature2')
-plt.legend(['Fraud', 'Normal'])
-plt.colorbar(label='Anomaly')
-plt.show()
-
-# Print some results
-print(df.head(10))
+# -1 for anomalies, 1 for normal points
+data['Anomaly'] = data['Anomaly'].map({-1: 'Anomaly', 1: 'Normal'})
