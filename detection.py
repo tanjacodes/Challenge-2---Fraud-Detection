@@ -3,7 +3,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import IsolationForest
 
 # Load your data (replace 'data.csv' with the actual file path)
-data = pd.read_csv('Dataframe_RiskOn_joined.csv')
+data = pd.read_csv('Dataframe_RiskOn_joined_FINAL.csv')
 data = data.drop(columns=['Client ID', 'RM ID', 'Date'])
 
 # Handle missing or incorrect data
@@ -15,7 +15,7 @@ scaler = StandardScaler()
 X_scaled = scaler.fit_transform(data)
 
 # Apply Isolation Forest for anomaly detection
-model = IsolationForest(contamination=0.05, random_state=42)
+model = IsolationForest(contamination=0.01, random_state=42)
 data['Anomaly'] = model.fit_predict(X_scaled)
 
 # Map results (1 for normal, -1 for anomaly)
